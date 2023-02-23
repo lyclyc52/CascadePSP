@@ -190,3 +190,29 @@ def process_im_single_pass(model, im, seg, L=900):
         images['pred_224'] = F.interpolate(images['pred_224'], size=(h, w), mode='bilinear', align_corners=True)
 
     return images['pred_224']
+
+
+
+
+def multi_process_im_single_pass(model, im, seg, L=900):
+    """
+    A single pass version, aka global step only.
+    """
+
+    _, _, h, w = im.shape
+    if max(h, w) < L:
+        im = resize_max_side(im, L, 'bicubic')
+        seg = resize_max_side(seg, L, 'bilinear')
+
+    if max(h, w) > L:
+        im = resize_max_side(im, L, 'area')
+        seg = resize_max_side(seg, L, 'area')
+
+    images = safe_forward(model, im, seg)
+
+    if max(h, w) < L:
+        images['pred_224'] = F.interpolate(images['pred_224'], size=(h, w), mode='area')
+    elif max(h, w) > L:
+        images['pred_224'] = F.interpolate(images['pred_224'], size=(h, w), mode='bilinear', align_corners=True)
+
+    return images['pred_224']

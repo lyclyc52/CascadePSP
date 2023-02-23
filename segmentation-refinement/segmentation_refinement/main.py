@@ -62,10 +62,36 @@ class Refiner:
             Fast mode - Use the global step only. Default: False. The speedup is more significant for high resolution images.
             L - Hyperparameter. Setting a lower value reduces memory usage. In fast mode, a lower L will make it runs faster as well.
             """
+            
             image = self.im_transform(image).unsqueeze(0).to(self.device)
             mask = self.seg_transform((mask>127).astype(np.uint8)*255).unsqueeze(0).to(self.device)
             if len(mask.shape) < 4:
                 mask = mask.unsqueeze(0)
+            
+            if fast:
+                output = process_im_single_pass(self.model, image, mask, L)
+            else:
+                output = process_high_res_im(self.model, image, mask, L)
+
+            return (output[0,0].cpu().numpy()*255).astype('uint8')
+        
+    def multi_refine(self, image, mask, fast=False, L=900):
+        with torch.no_grad():
+            """
+            Refines an input segmentation mask of the image.
+
+            image should be of size [N, H, W, 3]. Range 0~255.
+            Mask should be of size [N, H, W] or [N, H, W, 1]. Range 0~255. We will make the mask binary by thresholding at 127.
+            Fast mode - Use the global step only. Default: False. The speedup is more significant for high resolution images.
+            L - Hyperparameter. Setting a lower value reduces memory usage. In fast mode, a lower L will make it runs faster as well.
+            """
+            image = self.im_transform(image).unsqueeze(0).to(self.device)
+            mask_list = []
+            for i in range(mask.shape[0]):
+                mask_list.append(self.seg_transform((mask[i]>127).astype(np.uint8)*255))
+            mask = torch.cat(mask_list).to(self.device)
+            if len(mask.shape) < 4:
+                mask = mask.unsqueeze(1)
 
             if fast:
                 output = process_im_single_pass(self.model, image, mask, L)
