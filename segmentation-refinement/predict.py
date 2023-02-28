@@ -34,6 +34,8 @@ for scene in scene_list:
     img_list.sort()
 
     for i in tqdm(img_list):
+    
+    # for i in img_list:
         mask_file = os.path.join(scene_mask_root, i.replace('.jpg', '.png'))
         img_file = os.path.join(scene_img_root, i)
 
@@ -44,10 +46,11 @@ for scene in scene_list:
         for instance in instance_list:
             if instance == 0:
                 continue
-            instance_mask = (mask == instance).astype(np.uint8) * 255
-            
-            output = refiner.refine(image, instance_mask, fast=False, L=900) 
-            output_file = os.path.join(scene_output_root, i.replace('.jpg', f'_{instance // 3}.png'))
-            cv2.imwrite(output_file, output)
+            instance = int(instance // 3)
+            # instance_mask = (mask == instance).astype(np.uint8) * 255
+            instance_mask = cv2.imread(mask_file.replace('.png', f'_{instance}.png'))
 
+            output = refiner.refine(image, instance_mask[..., 0], fast=False, L=900) 
+            output_file = os.path.join(scene_output_root, i.replace('.jpg', f'_{instance}.png'))
+            cv2.imwrite(output_file, output)
     exit()
