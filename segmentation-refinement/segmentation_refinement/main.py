@@ -5,7 +5,7 @@ import torch
 from torchvision import transforms
 
 from segmentation_refinement.models.psp.pspnet import RefinementModule
-from segmentation_refinement.eval_helper import process_high_res_im, process_im_single_pass
+from segmentation_refinement.eval_helper import process_high_res_im, process_im_single_pass, multi_process_high_res_im
 from segmentation_refinement.download import download_and_or_check_model_file
 
 
@@ -86,6 +86,7 @@ class Refiner:
             L - Hyperparameter. Setting a lower value reduces memory usage. In fast mode, a lower L will make it runs faster as well.
             """
             image = self.im_transform(image).unsqueeze(0).to(self.device)
+            image = image.expand([mask.shape[0], -1,-1,-1])
             mask_list = []
             for i in range(mask.shape[0]):
                 mask_list.append(self.seg_transform((mask[i]>127).astype(np.uint8)*255))
@@ -96,6 +97,7 @@ class Refiner:
             if fast:
                 output = process_im_single_pass(self.model, image, mask, L)
             else:
-                output = process_high_res_im(self.model, image, mask, L)
 
-            return (output[0,0].cpu().numpy()*255).astype('uint8')
+                output = multi_process_high_res_im(self.model, image, mask, L)
+
+            return (output[:,0].cpu().numpy()*255).astype('uint8')
